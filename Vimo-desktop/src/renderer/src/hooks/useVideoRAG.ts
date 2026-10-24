@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router'
+import { shouldStartVideoStatusPoll } from '../lib/video-polling'
 
 export interface VideoIndexStatus {
   video_name: string
@@ -238,7 +239,7 @@ export function useVideoRAG(): UseVideoRAGReturn {
   // Poll processing videos status
   useEffect(() => {
     processingVideos.forEach(videoName => {
-      if (!videoStatus[videoName] || videoStatus[videoName].status === 'processing') {
+      if (shouldStartVideoStatusPoll(videoStatus[videoName])) {
         pollVideoStatus(videoName)
       }
     })
