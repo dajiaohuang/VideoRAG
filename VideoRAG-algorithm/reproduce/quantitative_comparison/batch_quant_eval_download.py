@@ -1,53 +1,57 @@
-import os
-os.environ["OPENAI_API_KEY"] = ""
-import re
-import time
 import json
-import jsonlines
-import tiktoken
+import os
 
-from tqdm import tqdm
+os.environ.setdefault("OPENAI_API_KEY", "")
+
 from openai import OpenAI
 
-client = OpenAI()
 
-def obtain_ouput_file_id(batches):
+def obtain_ouput_file_id(batches, client=None):
+    if client is None:
+        client = OpenAI()
     for batch in batches:
-        print(client.batches.retrieve(batch))
-        print(client.batches.retrieve(batch).output_file_id)
+        batch_info = client.batches.retrieve(batch)
+        print(batch_info)
+        print(batch_info.output_file_id)
 
-def download_result(result_files, base_dir):
-    for _file in result_files:
-        content = client.files.content(_file).content
-        with open(f"batch_requests/{base_dir}/{_file}.temp", "wb") as f:
-            f.write(content)
-        results = []
-        with open(f"batch_requests/{base_dir}/{_file}.temp", 'r') as f:
-            for line in tqdm(f):
-                json_object = json.loads(line.strip())
-                results.append(json_object)
-        with open(f"batch_requests/{base_dir}/{_file}.json", "w") as json_file:
-            json.dump(results, json_file, indent=4)
-        os.remove(f"batch_requests/{base_dir}/{_file}.temp")
 
-# ================================
+def download_result(result_files, base_dir, client=None):
+    if client is None:
+        client = OpenAI()
+
+    for file_id in result_files:
+        content = client.files.content(file_id).content
+        temp_path = f"batch_requests/{base_dir}/{file_id}.temp"
+        result_path = f"batch_requests/{base_dir}/{file_id}.json"
+        try:
+            with open(temp_path, "wb") as f:
+                f.write(content)
+            results = []
+            with open(temp_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    results.append(json.loads(line.strip()))
+            with open(result_path, "w", encoding="utf-8") as json_file:
+                json.dump(results, json_file, indent=4)
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
 
 # Please enter the relevant batch ID here to obtain the output file ID.
 batches = [
-    '',
-    '',
-    '',
-    '',
-    ''
+    "",
+    "",
+    "",
+    "",
+    "",
 ]
-obtain_ouput_file_id(batches)
 
-# Second Step: Please enter the output file ID below to download the output files.
-# result_files = [
-#     '',
-#     '',
-#     '',
-#     '',
-#     ''
-# ]
-# download_result(result_files, base_dir='overall_comparison_video_understanding')
+
+def main():
+    obtain_ouput_file_id(batches)
+    # Second Step: enter output file IDs below and call:
+    # download_result(result_files, base_dir="overall_comparison_video_understanding")
+
+
+if __name__ == "__main__":
+    main()
