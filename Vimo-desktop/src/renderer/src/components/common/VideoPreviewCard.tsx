@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Clock, X, Video } from 'lucide-react';
 import { UploadedVideo } from '../../types/chat';
+import { createRequestGuard } from '../../utils/request-guard';
 
 interface VideoPreviewCardProps {
   video: UploadedVideo;
@@ -18,8 +19,10 @@ export const VideoPreviewCard: React.FC<VideoPreviewCardProps> = ({
 }) => {
   const [duration, setDuration] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const requestGuard = useRef(createRequestGuard());
 
   useEffect(() => {
+    const requestId = requestGuard.current.begin();
     // Reset states when video URL changes
     setDuration(null);
     setIsLoading(true);
@@ -33,6 +36,7 @@ export const VideoPreviewCard: React.FC<VideoPreviewCardProps> = ({
         
         // Use window.api to call video duration API
         const result = await window.api.videorag.getVideoDuration(video.path);
+        if (!requestGuard.current.isCurrent(requestId)) return;
         
         if (result.success) {
           setDuration(result.duration ?? null);
@@ -40,13 +44,15 @@ export const VideoPreviewCard: React.FC<VideoPreviewCardProps> = ({
           console.error('Failed to get video duration:', result.error);
         }
       } catch (error) {
+        if (!requestGuard.current.isCurrent(requestId)) return;
         console.error('Error fetching video duration:', error);
       } finally {
-        setIsLoading(false);
+        if (requestGuard.current.isCurrent(requestId)) setIsLoading(false);
       }
     };
 
     fetchVideoDuration();
+    return () => requestGuard.current.invalidate(requestId);
   }, [video.path]);
 
   const formatDuration = (seconds: number): string => {
