@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { UploadedVideo } from '../types/chat';
 import { generateVideoId, formatFileSize } from '../utils/chat';
 
@@ -9,6 +9,15 @@ interface UseVideoUploadProps {
 }
 
 export const useVideoUpload = ({ uploadedVideos, setUploadedVideos, onShowToast }: UseVideoUploadProps) => {
+  const pendingVideoPaths = useRef(new Set<string>());
+
+  useEffect(() => {
+    const currentPaths = new Set(uploadedVideos.map(video => video.path));
+    for (const path of pendingVideoPaths.current) {
+      if (currentPaths.has(path)) pendingVideoPaths.current.delete(path);
+    }
+  }, [uploadedVideos]);
+
   // Use Electron file selection API
   const handleVideoUpload = useCallback(async () => {
     try {
@@ -19,12 +28,14 @@ export const useVideoUpload = ({ uploadedVideos, setUploadedVideos, onShowToast 
         const duplicateFiles: string[] = [];
         
         for (const file of result.files) {
-          // Check if the video already exists with the same path
-          const isDuplicate = uploadedVideos.some(video => video.path === file.path);
+          // Check both committed videos and selections whose state update is pending.
+          const isDuplicate = uploadedVideos.some(video => video.path === file.path)
+            || pendingVideoPaths.current.has(file.path);
           
           if (isDuplicate) {
             duplicateFiles.push(file.name);
           } else {
+            pendingVideoPaths.current.add(file.path);
             const videoId = generateVideoId();
             // Use file protocol to create URL for preview
             const videoUrl = `file://${file.path}`;
@@ -43,7 +54,15 @@ export const useVideoUpload = ({ uploadedVideos, setUploadedVideos, onShowToast 
 
         // Add new videos
         if (newVideos.length > 0) {
-          setUploadedVideos((prev) => [...prev, ...newVideos]);
+          setUploadedVideos((prev) => {
+            const currentPaths = new Set(prev.map(video => video.path));
+            const uniqueVideos = newVideos.filter(video => {
+              if (currentPaths.has(video.path)) return false;
+              currentPaths.add(video.path);
+              return true;
+            });
+            return uniqueVideos.length > 0 ? [...prev, ...uniqueVideos] : prev;
+          });
         }
 
         // If there are duplicate files, show a prompt
@@ -60,7 +79,7 @@ export const useVideoUpload = ({ uploadedVideos, setUploadedVideos, onShowToast 
     } catch (error) {
       console.error('Error selecting video files:', error);
     }
-  }, [uploadedVideos, setUploadedVideos]);
+  }, [uploadedVideos, setUploadedVideos, onShowToast]);
 
   // Keep compatibility with drag and drop upload - currently not supported
   const handleVideoUploadFromFiles = useCallback(async () => {
