@@ -24,16 +24,6 @@ export const WelcomeScreen = ({
   
 
   
-  // Debug information
-  console.log('WelcomeScreen - Analysis State:', { 
-    isAnalyzing: analysisState.isAnalyzing,
-    progress: analysisState.progress,
-    currentStep: analysisState.currentStep,
-    selectedVideos: analysisState.selectedVideos,
-    uploadedVideos: uploadedVideos,
-    shouldShowVideoBar: uploadedVideos.length > 0 || analysisState.selectedVideos.length > 0
-  });
-
   const handleClick = () => {
     if (isServiceReady) {
       onVideoUpload();
