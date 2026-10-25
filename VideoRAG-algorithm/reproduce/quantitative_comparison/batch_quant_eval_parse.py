@@ -3,7 +3,7 @@ import os
 import threading
 import time
 
-os.environ.setdefault("OPENAI_API_KEY", "")
+os.environ["OPENAI_API_KEY"] = ""
 
 from openai import OpenAI
 from setproctitle import setproctitle
