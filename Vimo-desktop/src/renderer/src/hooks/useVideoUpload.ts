@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback } from 'react';
 import { UploadedVideo } from '../types/chat';
 import { generateVideoId, formatFileSize } from '../utils/chat';
 
@@ -9,15 +9,6 @@ interface UseVideoUploadProps {
 }
 
 export const useVideoUpload = ({ uploadedVideos, setUploadedVideos, onShowToast }: UseVideoUploadProps) => {
-  const pendingVideoPaths = useRef(new Set<string>());
-
-  useEffect(() => {
-    const currentPaths = new Set(uploadedVideos.map(video => video.path));
-    for (const path of pendingVideoPaths.current) {
-      if (currentPaths.has(path)) pendingVideoPaths.current.delete(path);
-    }
-  }, [uploadedVideos]);
-
   // Use Electron file selection API
   const handleVideoUpload = useCallback(async () => {
     try {
@@ -28,14 +19,12 @@ export const useVideoUpload = ({ uploadedVideos, setUploadedVideos, onShowToast 
         const duplicateFiles: string[] = [];
         
         for (const file of result.files) {
-          // Check both committed videos and selections whose state update is pending.
-          const isDuplicate = uploadedVideos.some(video => video.path === file.path)
-            || pendingVideoPaths.current.has(file.path);
+          // Check already visible selections; the state update below also checks current state.
+          const isDuplicate = uploadedVideos.some(video => video.path === file.path);
           
           if (isDuplicate) {
             duplicateFiles.push(file.name);
           } else {
-            pendingVideoPaths.current.add(file.path);
             const videoId = generateVideoId();
             // Use file protocol to create URL for preview
             const videoUrl = `file://${file.path}`;
