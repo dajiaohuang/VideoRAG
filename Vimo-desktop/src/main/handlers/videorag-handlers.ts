@@ -507,14 +507,17 @@ export function setupVideoRAGHandlers() {
       }
       
       // Production mode: report whether a stop signal was sent; the child remains tracked until close.
+      const processToStop = pythonProcess
       const stopRequested = stopVideoRAGService()
       if (!stopRequested) {
         return { success: false, error: 'Failed to send a stop signal to the VideoRAG process' }
       }
-      return {
-        success: true,
-        message: pythonProcess ? 'Service stop requested; waiting for process exit' : 'Service is already stopped',
+      if (processToStop && isVideoRAGProcessActive(processToStop)) {
+        await new Promise<void>((resolve) => {
+          processToStop.once('close', () => resolve())
+        })
       }
+      return { success: true, message: 'Service stopped successfully' }
     } catch (error: any) {
       return { success: false, error: error.message }
     }
